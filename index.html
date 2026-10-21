@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEPO: A General Framework for Improving Prompt Optimization in Multi-Agent Systems</title>
+  <meta name="description" content="CEPO is a plug-in principle for prompt optimization in multi-agent systems: decompose prompts into a shared coordinator and per-agent executors, optimize each for its role, with any prompt optimizer. Consistent gains across 11 benchmarks, 4 domains, 4 multi-agent systems and 4 optimizers.">
+  <meta property="og:title" content="CEPO: A General Framework for Improving Prompt Optimization in Multi-Agent Systems">
+  <meta property="og:description" content="A plug-in principle for prompt optimization in multi-agent systems. Any domain, any MAS architecture, any optimizer: it goes up (26/26 settings improved).">
+  <meta property="og:image" content="https://mlvlab.github.io/CEPO/static/figures/teaser_poster.jpg">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="static/logos/mlv_logo.png">
+  <script>(function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/vendor/fontawesome/css/all.min.css">
+  <style>
+    :root{
+      --brand:#2b4f9e;--brand-d:#1d3a78;--brand-dd:#142a59;--brand-l:#eef3fc;--brand-l2:#dbe6fa;
+      --co:#e0245e;--co-l:#ffe4ea;--ex:#2563eb;--ex-l:#dbeafe;--gd:#15803d;--gd-l:#dcfce7;--gd-l2:#86efac;
+      --ink:#171a21;--muted:#525b69;--muted-l:#6b7280;--line:#e6eaf0;--bg:#ffffff;--soft:#f7f9fc;
+      --radius:16px;
+      --shadow:0 1px 2px rgba(20,30,60,.04), 0 8px 30px rgba(20,30,60,.06);
+      --shadow-h:0 6px 16px rgba(20,30,60,.08), 0 18px 48px rgba(20,30,60,.12);
+      --maxw:1080px;--textw:880px;
+    }
+    *{box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    body{margin:0;font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);background:var(--bg);line-height:1.68;font-size:17px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+    a{color:var(--brand);text-decoration:none;}
+    a:hover{text-decoration:underline;}
+    a:focus-visible,.btn:focus-visible,.copy-btn:focus-visible,.navlinks a:focus-visible,.zoom:focus-visible{outline:3px solid var(--brand);outline-offset:3px;border-radius:8px;text-decoration:none;}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px;}
+    .narrow{max-width:var(--textw);margin-left:auto;margin-right:auto;}
+    h1,h2,h3,h4{font-family:'Plus Jakarta Sans','Inter',sans-serif;}
+    code.inl{background:var(--brand-l);color:var(--brand-dd);padding:1px 7px;border-radius:6px;font-family:'JetBrains Mono';font-size:.85em;}
+
+    /* ---------- top nav ---------- */
+    nav.topbar{position:sticky;top:0;z-index:50;backdrop-filter:saturate(180%) blur(10px);background:rgba(255,255,255,.82);border-bottom:1px solid var(--line);}
+    .topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:56px;}
+    .topbar .brand-mini{display:flex;align-items:center;gap:10px;font-weight:700;font-family:'Plus Jakarta Sans';letter-spacing:-.01em;color:var(--ink);}
+    .topbar .brand-mini img{height:26px;width:26px;border-radius:6px;}
+    .topbar .brand-mini b{color:var(--brand);}
+    .topbar .nav-logo{line-height:0;display:block;flex-shrink:0;}
+    .topbar .nav-logo img{height:30px;width:auto;max-width:min(200px,46vw);display:block;object-fit:contain;transition:opacity .15s;}
+    .topbar .nav-logo:hover img{opacity:.82;}
+    html.dark .topbar .nav-logo img{filter:invert(1) hue-rotate(180deg);}
+    .topbar .nav-left{display:flex;align-items:center;gap:13px;}
+    .topbar .nav-sep{width:1px;height:22px;background:var(--line);flex-shrink:0;}
+    .navlinks{display:flex;gap:22px;font-size:.93rem;font-weight:500;}
+    .navlinks a{color:var(--muted);}
+    .navlinks a:hover{color:var(--brand);text-decoration:none;}
+    @media(max-width:780px){.navlinks{display:none;}}
+    .nav-right{display:flex;align-items:center;gap:20px;}
+    .theme-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer;transition:color .15s,border-color .15s,background .15s;}
+    .theme-btn:hover{color:var(--brand);border-color:var(--brand-l2);background:var(--brand-l);}
+    .theme-btn .ic-sun{display:none;}
+    html.dark .theme-btn .ic-moon{display:none;}
+    html.dark .theme-btn .ic-sun{display:inline;}
+
+    /* ---------- hero ---------- */
+    header.hero{position:relative;overflow:hidden;padding:62px 0 10px;text-align:center;background:radial-gradient(1100px 380px at 50% -120px, var(--brand-l) 0%, rgba(238,243,252,0) 70%),linear-gradient(180deg,#fbfcfe 0%, #ffffff 60%);}
+    .badge{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--brand-d);background:#fff;border:1px solid var(--brand-l2);padding:7px 16px;border-radius:999px;margin-bottom:24px;box-shadow:var(--shadow);}
+    .badge i{color:var(--brand);}
+    h1.title{font-size:clamp(1.3rem,5.2vw,2.7rem);line-height:1.16;font-weight:800;letter-spacing:-.025em;margin:0 auto 14px;max-width:1040px;overflow-wrap:break-word;}
+    h1 .brand{white-space:nowrap;color:var(--brand-d);}
+    .subtitle{font-size:clamp(1rem,2.6vw,1.16rem);color:var(--muted);font-weight:500;margin:0 auto 22px;max-width:760px;}
+
+    .chips{display:inline-flex;flex-wrap:wrap;gap:6px;margin-top:8px;vertical-align:middle;}
+    .chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--soft);border:1px solid var(--line);color:var(--ink);font-family:'JetBrains Mono';white-space:nowrap;}
+    .chip.g{background:var(--gd-l);border-color:var(--gd-l2);color:var(--gd);}
+    .authors{font-size:1.07rem;margin:18px auto 6px;line-height:2;max-width:900px;}
+    .authors .au{white-space:nowrap;margin:0 5px;color:var(--ink);font-weight:600;}
+    .authors a.au:hover{color:var(--brand);text-decoration:none;}
+    .sup{color:var(--brand);font-weight:700;font-size:.82em;}
+    .affil{color:var(--muted);font-size:.98rem;margin:12px auto 2px;display:flex;gap:22px;justify-content:center;flex-wrap:wrap;}
+    .affil span{display:inline-flex;align-items:center;gap:6px;}
+    .notes{color:var(--muted-l);font-size:.86rem;margin-top:4px;}
+
+    /* ---------- buttons ---------- */
+    .buttons{display:flex;gap:13px;justify-content:center;flex-wrap:wrap;margin:32px 0 8px;}
+    .btn{display:inline-flex;align-items:center;gap:9px;background:#171a21;color:#fff;font-family:'Inter',sans-serif;padding:12px 23px;border-radius:999px;font-size:.98rem;font-weight:600;border:1px solid #171a21;transition:transform .12s ease,box-shadow .2s ease,background .2s ease;}
+    .btn:hover{background:#000;text-decoration:none;transform:translateY(-2px);box-shadow:var(--shadow-h);}
+    .btn i{font-size:1.06rem;}
+    .btn.ghost{background:var(--brand-l);color:var(--brand-d);border:1px solid var(--brand-l2);cursor:default;}
+    .btn.ghost:hover{transform:none;background:var(--brand-l);box-shadow:none;}
+    .btn.ghost .soon{font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:#fff;color:var(--brand);padding:2px 8px;border-radius:999px;margin-left:3px;border:1px solid var(--brand-l2);}
+
+    /* ---------- sections ---------- */
+    section{padding:66px 0;}
+    section[id]{scroll-margin-top:70px;}
+    .video-sec{padding-top:28px;padding-bottom:28px;}
+    section.alt{background:var(--soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+    .eyebrow{display:block;text-align:center;color:var(--brand);font-weight:700;font-size:.8rem;letter-spacing:.13em;text-transform:uppercase;margin-bottom:10px;}
+    h2.section-title{font-size:clamp(1.5rem,4.6vw,1.95rem);font-weight:800;text-align:center;letter-spacing:-.02em;margin:0 0 30px;}
+    .section-sub{text-align:center;color:var(--muted);max-width:720px;margin:0 auto 34px;font-size:1.02rem;}
+    .abstract p{font-size:1.08rem;color:#2b313c;margin:0;text-align:justify;}
+    .abstract b{color:var(--ink);}
+
+    /* video */
+    .video-player{width:100%;height:auto;aspect-ratio:16/9;display:block;background:#000;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-h);}
+
+    /* stats */
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:34px auto 0;max-width:1080px;}
+    @media(max-width:820px){.stats{grid-template-columns:repeat(2,1fr);}}
+    .stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px 18px;text-align:center;box-shadow:var(--shadow);}
+    .stat .n{font-family:'JetBrains Mono';font-weight:700;font-size:2.1rem;letter-spacing:-.03em;color:var(--gd);line-height:1.1;}
+    .stat .n.b{color:var(--brand-d);}
+    .stat .l{color:var(--muted);font-size:.9rem;margin-top:6px;line-height:1.4;}
+
+    /* ---------- figures ---------- */
+    figure{margin:0;}
+    .fig{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);}
+    .fig img{width:100%;height:auto;display:block;border-radius:8px;}
+    figcaption{font-size:.93rem;color:var(--muted);margin-top:16px;line-height:1.6;}
+    figcaption b{color:var(--ink);}
+    .fig-wide{max-width:1080px;margin-left:auto;margin-right:auto;}
+    .fig-mid{max-width:720px;margin-left:auto;margin-right:auto;}
+    a.zoom{display:block;position:relative;}
+    a.zoom::after{content:"\f00e";font-family:"Font Awesome 6 Free";font-weight:900;position:absolute;top:10px;right:10px;color:#fff;background:rgba(20,30,60,.55);width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;opacity:0;transition:opacity .2s;}
+    a.zoom:hover::after{opacity:1;}
+    a.zoom:hover{text-decoration:none;}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+    @media(max-width:820px){.two{grid-template-columns:1fr;}}
+
+    /* ---------- cards ---------- */
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+    @media(max-width:820px){.cards{grid-template-columns:1fr;}}
+    .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:28px 26px;box-shadow:var(--shadow);transition:transform .15s,box-shadow .2s;border-top:3px solid var(--brand);}
+    .card.co{border-top-color:var(--co);}
+    .card.gd{border-top-color:var(--gd);}
+    .card.op{border-top-color:#c99a1b;}
+    .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-h);}
+    .card h3{margin:0 0 10px;font-size:1.14rem;letter-spacing:-.01em;color:var(--brand-dd);}
+    .card p{margin:0;font-size:.98rem;color:var(--muted);}
+
+    /* ---------- pipeline ---------- */
+    .pipeline{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;justify-content:center;margin-top:8px;}
+    .pstep{flex:1;min-width:165px;min-height:160px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 18px;position:relative;box-shadow:var(--shadow);}
+    .pstep .num{width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;margin-bottom:12px;}
+    .pstep.co .num{background:var(--co);} .pstep.ex .num{background:var(--ex);} .pstep.gd .num{background:var(--gd);}
+    .pstep h4{margin:0 0 6px;font-size:1.02rem;}
+    .pstep p{margin:0;font-size:.88rem;color:var(--muted);line-height:1.55;}
+    .arrow{display:flex;align-items:center;color:var(--brand);font-size:1.5rem;padding:0 8px;}
+    @media(max-width:760px){.arrow{justify-content:center;padding:6px 0;}.arrow i{transform:rotate(90deg);}.pipeline{flex-direction:column;}.pstep{min-height:0;}}
+
+    /* ---------- tables ---------- */
+    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+    table{border-collapse:collapse;width:100%;font-size:.92rem;background:#fff;}
+    th,td{padding:11px 14px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap;}
+    thead th{background:var(--brand-dd);color:#fff;font-weight:700;font-family:'Plus Jakarta Sans';border-bottom:none;}
+    thead tr:first-child th{border-bottom:1px solid rgba(255,255,255,.18);}
+    td:first-child,th:first-child{text-align:left;}
+    tbody tr:hover{background:#fafbfe;}
+    tr.group td{text-align:left;font-weight:800;background:#eceef3;color:var(--ink);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;border-top:2px solid #c9d0dd;}
+    tr.ours{background:var(--brand-l2)!important;}
+    tr.ours td{color:var(--brand-dd);font-weight:800;}
+    tr.ours td:first-child{box-shadow:inset 4px 0 0 0 var(--brand);}
+    td .d{color:var(--gd);font-size:.78em;font-weight:700;margin-left:3px;font-family:'JetBrains Mono';}
+    .colsep{border-left:1px solid var(--line);}
+    thead .colsep{border-left:1px solid rgba(255,255,255,.18);}
+    .tbl-cap{font-size:.9rem;color:var(--muted);margin:16px auto 0;text-align:center;max-width:860px;}
+    .scroll-hint{display:none;text-align:center;color:var(--muted-l);font-size:.78rem;margin:10px 0 0;}
+    .tbl-title{font-family:'Plus Jakarta Sans';font-weight:800;font-size:1.08rem;margin:44px 0 12px;letter-spacing:-.01em;}
+    .tbl-title:first-of-type{margin-top:0;}
+    .tbl-title span{color:var(--muted);font-weight:500;font-size:.92rem;margin-left:8px;}
+    .small-tables{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+    @media(max-width:900px){.small-tables{grid-template-columns:1fr;}}
+    .small-tables .fig{padding:14px;}
+    .small-tables figcaption{font-size:.86rem;margin-top:10px;}
+
+    /* ---------- bibtex ---------- */
+    .bibwrap{position:relative;}
+    pre.bibtex{background:#0e1320;color:#dde6f5;border-radius:var(--radius);padding:24px 26px;margin:0;overflow-x:auto;font-size:.86rem;line-height:1.7;font-family:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;border:1px solid #1b2336;}
+    pre.bibtex .k{color:#7aa2f7;}
+    pre.bibtex .v{color:#9ece6a;}
+    .copy-btn{position:absolute;top:14px;right:14px;background:#1b2336;color:#cdd6f4;border:1px solid #2a3550;border-radius:9px;padding:7px 13px;font-size:.82rem;cursor:pointer;font-weight:600;font-family:'Inter';transition:background .15s;}
+    .copy-btn:hover{background:#27324d;}
+
+    /* ---------- footer ---------- */
+    footer{padding:44px 0 40px;border-top:1px solid var(--line);background:var(--soft);text-align:center;}
+    .foot-note{color:var(--muted);font-size:.88rem;line-height:1.7;}
+    .foot-note a{color:var(--muted);text-decoration:underline;}
+    .mt40{margin-top:40px;}
+
+    /* ---------- dark mode ---------- */
+    html.dark{--brand:#5b8aef;--brand-d:#86abf6;--brand-dd:#b6cefb;--brand-l:#18222f;--brand-l2:#26344b;--co-l:#3a1a26;--ex-l:#172238;--gd:#4ade80;--gd-l:#14291c;--gd-l2:#1f4a2c;--ink:#e7edf5;--muted:#9aa6b6;--muted-l:#7a8492;--line:#262d3a;--bg:#0d1117;--soft:#131a24;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 30px rgba(0,0,0,.36);--shadow-h:0 6px 16px rgba(0,0,0,.42),0 18px 48px rgba(0,0,0,.52);}
+    html.dark body{background:var(--bg);color:var(--ink);}
+    html.dark nav.topbar{background:rgba(13,17,23,.82);}
+    html.dark header.hero{background:radial-gradient(1100px 380px at 50% -120px,#17243d 0%,rgba(13,17,23,0) 70%),linear-gradient(180deg,#10151d 0%,#0d1117 60%);}
+    html.dark .badge,html.dark .stat{background:#121a27;border-color:var(--brand-l2);}
+    html.dark .card,html.dark .fig,html.dark .pstep{background:#161c26;}
+    html.dark table{background:#161c26;}
+    html.dark thead th{background:#1a2233;color:#e7edf5;}
+    html.dark thead tr:first-child th{border-bottom-color:rgba(255,255,255,.12);}
+    html.dark thead .colsep{border-left-color:rgba(255,255,255,.12);}
+    html.dark tr.group td{background:#1a212c;color:#cdd6e4;border-top-color:#2c3645;}
+    html.dark tbody tr:hover{background:#1a212c;}
+    html.dark .btn{background:#e7edf5;color:#0d1117;border-color:#e7edf5;}
+    html.dark .btn:hover{background:#fff;}
+    html.dark .btn.ghost{background:#18222f;color:#86abf6;border-color:#26344b;}
+    html.dark .btn.ghost .soon{background:#0d1117;color:#86abf6;border-color:#26344b;}
+    html.dark .abstract p{color:#c9d3e0;}
+    html.dark a.zoom::after{background:rgba(0,0,0,.6);}
+    html.dark .chip{background:#1a2233;border-color:#26344b;color:#e7edf5;}
+    html.dark .chip.g{background:var(--gd-l);border-color:var(--gd-l2);color:var(--gd);}
+    html.dark .fig img{background:#fff;}
+
+    /* ---------- mobile ---------- */
+    @media(max-width:720px){
+      body{font-size:16px;}
+      header.hero{padding:46px 0 12px;}
+      section{padding:48px 0;}
+      .wrap{padding:0 20px;}
+      .brk{display:none;}
+      .authors{font-size:.98rem;line-height:1.9;}
+      .scroll-hint{display:block;}
+      th,td{padding:8px 10px;font-size:.82rem;}
+      table{font-size:.82rem;}
+      .abstract p{text-align:left;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======== NAV ======== -->
+  <nav class="topbar">
+    <div class="wrap">
+      <div class="nav-left">
+        <a class="nav-logo" href="https://mlv.kaist.ac.kr/" target="_blank" rel="noopener" title="MLV Lab — Machine Learning &amp; Vision Lab"><img src="static/logos/mlv_logo.png" alt="MLV Lab"></a>
+      </div>
+      <div class="nav-right">
+        <div class="navlinks">
+          <a href="#video">Video</a>
+          <a href="#abstract">Abstract</a>
+          <a href="#method">Method</a>
+          <a href="#results">Results</a>
+          <a href="#analysis">Analysis</a>
+          <a href="#bibtex">BibTeX</a>
+        </div>
+        <button id="theme-toggle" class="theme-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode" aria-pressed="false">
+          <svg class="ic-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+          <svg class="ic-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M4.7 4.7l1.6 1.6M17.7 17.7l1.6 1.6M2.6 12h2.2M19.2 12h2.2M4.7 19.3l1.6-1.6M17.7 6.3l1.6-1.6"/></g></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ======== HERO ======== -->
+  <header class="hero" id="top">
+    <div class="wrap">
+      <span class="badge"><i class="fas fa-diagram-project"></i> Prompt optimization for multi-agent systems</span>
+      <h1 class="title"><span class="brand">CEPO</span>: A General Framework for Improving <br class="brk">Prompt Optimization in Multi-Agent Systems</h1>
+      <p class="subtitle">A plug-in principle for prompt optimization in multi-agent systems: decompose prompts into a shared coordinator and per-agent executors, optimize each for its role, with any optimizer.</p>
+
+      <div class="authors">
+        <a class="au" href="https://jonghakim35.github.io/" target="_blank" rel="noopener">Jongha Kim<sup class="sup">1,&lowast;</sup></a>
+        <a class="au" href="https://www.seohyunleee.com/" target="_blank" rel="noopener">Seohyun Lee<sup class="sup">2,&lowast;</sup></a>
+        <span class="au">Jonathan Minho Chung<sup class="sup">2</sup></span>
+        <a class="au" href="https://scholar.google.com/citations?user=kiFd6A8AAAAJ" target="_blank" rel="noopener">Jinsung Yoon<sup class="sup">3</sup></a>
+        <a class="au" href="https://www.hyunwoojkim.com/home" target="_blank" rel="noopener">Hyunwoo J. Kim<sup class="sup">2,&dagger;</sup></a>
+      </div>
+      <div class="affil">
+        <span><sup class="sup">1</sup>&nbsp;Korea University</span>
+        <span><sup class="sup">2</sup>&nbsp;KAIST</span>
+        <span><sup class="sup">3</sup>&nbsp;Google Cloud AI</span>
+      </div>
+      <div class="notes"><span class="sup">&lowast;</span>&nbsp;Equal contribution&nbsp;&nbsp;&nbsp;<span class="sup">&dagger;</span>&nbsp;Corresponding author</div>
+
+      <div class="buttons">
+        <a class="btn" href="https://arxiv.org/abs/2610.34722" target="_blank" rel="noopener"><i class="fas fa-file-lines"></i> arXiv</a>
+        <span class="btn ghost"><i class="fab fa-github"></i> Code <span class="soon">coming soon</span></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======== VIDEO ======== -->
+  <section class="video-sec" id="video">
+    <div class="wrap">
+      <video class="video-player" id="teaser" controls playsinline preload="metadata" poster="static/figures/teaser_poster.jpg" aria-label="CEPO teaser video">
+        <source src="static/videos/cepo-teaser.mp4" type="video/mp4">
+        Your browser does not support embedded video. <a href="static/videos/cepo-teaser.mp4">Watch the teaser video directly.</a>
+      </video>
+    </div>
+  </section>
+
+  <!-- ======== KEY POINTS ======== -->
+  <section class="alt" id="keypoints" style="padding-top:54px;padding-bottom:54px;">
+    <div class="wrap">
+      <span class="eyebrow">In one breath</span>
+      <h2 class="section-title">CEPO in three lines</h2>
+      <div class="cards">
+        <div class="card">
+          <h3><i class="fas fa-sitemap" style="color:var(--brand);margin-right:8px;"></i>A principle, not another optimizer</h3>
+          <p>Split every agent prompt into one shared <b>coordinator</b> prompt (how the team collaborates) and per-agent <b>executor</b> prompts (how each agent does its job), and optimize each for its role.</p>
+        </div>
+        <div class="card op">
+          <h3><i class="fas fa-plug" style="color:#c99a1b;margin-right:8px;"></i>Plugs into any prompt optimizer</h3>
+          <p>CEPO only specifies the prompt structure and the optimization guidance; the search is done by the optimizer you already use, with no modification. <span class="chips"><span class="chip">PE2</span><span class="chip">OPRO</span><span class="chip">ProTeGi</span><span class="chip">MASPO</span></span></p>
+        </div>
+        <div class="card gd">
+          <h3><i class="fas fa-arrow-trend-up" style="color:var(--gd);margin-right:8px;"></i>Any domain, any MAS, any optimizer: it goes up</h3>
+          <p>26 / 26 optimizer &times; system &times; benchmark settings improve across 11 benchmarks, 4 domains, 4 multi-agent systems and 4 optimizers. <span class="chips"><span class="chip g">Document +4.3</span><span class="chip g">Math &middot; Code +5.1</span><span class="chip g">Video +4.6</span></span></p>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="n">26 / 26</div><div class="l">optimizer &times; system &times; benchmark settings improved</div></div>
+        <div class="stat"><div class="n">+7.9</div><div class="l">largest gain (DocAgent, MMLongBench-Doc)</div></div>
+        <div class="stat"><div class="n b">4 &times; 4</div><div class="l">prompt optimizers &times; multi-agent systems</div></div>
+        <div class="stat"><div class="n b">11</div><div class="l">benchmarks across document, math, code and video</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== ABSTRACT ======== -->
+  <section id="abstract">
+    <div class="wrap">
+      <span class="eyebrow">Overview</span>
+      <h2 class="section-title">Abstract</h2>
+      <div class="abstract narrow">
+        <p>
+          Multi-agent systems (MAS) require both effective coordination and specialized task execution. Existing
+          prompt optimization approaches typically couple these functions within agent-specific prompts. We introduce
+          <b>Coordinator-Executor Prompt Optimization (CEPO)</b>, a general framework for improving prompt
+          optimization in MAS. CEPO separates system-level coordination from agent-level execution through a shared
+          <b>coordinator prompt</b> and agent-specific <b>executor prompts</b>, and guides their updates according to
+          their respective roles. This structure allows shared coordination rules to be refined consistently across
+          agents while keeping execution instructions separately adjustable. CEPO provides the prompt structure and
+          optimization guidance, while existing prompt optimizers perform the underlying search. Extensive experiments
+          spanning <b>11 benchmarks across four domains</b> demonstrate that applying CEPO to <b>four existing prompt
+          optimizers</b> consistently improves their performance. Ablations and qualitative analyses support the
+          proposed design, while controlled studies on a document-understanding MAS further demonstrate improved
+          optimization budget efficiency and performance scaling with the number of agents.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== CONTRIBUTIONS ======== -->
+  <section class="alt">
+    <div class="wrap">
+      <span class="eyebrow">Why CEPO</span>
+      <h2 class="section-title">The problem, and two principles</h2>
+      <p class="section-sub">Today a multi-agent system is optimized one agent prompt at a time. Each prompt gets better alone, but the rules the team shares (hand-offs, conflict flagging, what to cite) are buried in every prompt, get optimized separately, and drift apart.</p>
+      <div class="cards">
+        <div class="card co">
+          <h3>Principle 1 &middot; Decompose</h3>
+          <p>Pull shared coordination out of every agent into one <b>coordinator prompt</b> <code class="inl">p<sub>C</sub></code>. Each agent keeps an <b>executor prompt</b> <code class="inl">p<sub>E</sub><sup>(i)</sup></code>; its effective prompt is <code class="inl">p<sub>C</sub> &oplus; p<sub>E</sub><sup>(i)</sup></code>. One coordination update reaches every agent at once; execution stays local.</p>
+        </div>
+        <div class="card">
+          <h3>Principle 2 &middot; Align</h3>
+          <p>Optimize each layer for its role with distinct meta-instructions: <code class="inl">&Phi;<sub>C</sub></code> steers the coordinator toward team-level collaboration, <code class="inl">&Phi;<sub>E</sub></code> steers each executor toward its own task. The coordinator learns <i>what the team should do</i>; the executor learns <i>how to do it</i>.</p>
+        </div>
+        <div class="card gd">
+          <h3>Plug-in, and it goes up</h3>
+          <p>CEPO specifies the prompt components and the guidance; any black-box optimizer performs the search. Applied to PE2, OPRO, ProTeGi and MASPO on document QA, math, code and long-video understanding, it improves <b>every</b> optimizer &times; system &times; benchmark setting we tried, with better budget efficiency and gains that grow with the number of agents.</p>
+        </div>
+      </div>
+
+      <figure class="fig fig-wide mt40">
+        <a class="zoom" href="static/figures/fig1_overview.png" target="_blank" rel="noopener">
+          <img src="static/figures/fig1_overview.png" loading="lazy" decoding="async" alt="Prior work couples coordination and execution within agent-specific prompts; CEPO separates them into a shared coordinator prompt and agent-specific executor prompts with role-aligned optimization guidance. Right: accuracy on MDocAgent + MMLongBench-Doc rises from 54.1 (baseline) to 57.9 (vanilla PO), 58.6 (prompt decomposition) and 61.0 (CEPO).">
+        </a>
+        <figcaption>
+          <b>Prior work vs. CEPO.</b> Existing methods couple coordination and execution roles within agent-specific prompts and optimize them role-agnostically. CEPO represents the two functions as distinct optimizable parameters, a shared coordinator prompt <code class="inl">p<sub>C</sub></code> and agent-specific executor prompts <code class="inl">p<sub>E</sub></code>, and guides their updates by role. On MDocAgent + MMLongBench-Doc, a vanilla optimizer improves the baseline from 54.1 to 57.9, prompt decomposition reaches 58.6, and decomposition with role-aligned optimization (CEPO) reaches <b>61.0</b>.
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ======== METHOD ======== -->
+  <section id="method">
+    <div class="wrap">
+      <span class="eyebrow">Method</span>
+      <h2 class="section-title">How CEPO works</h2>
+
+      <figure class="fig fig-wide">
+        <a class="zoom" href="static/figures/fig2_method.png" target="_blank" rel="noopener">
+          <img src="static/figures/fig2_method.png" loading="lazy" decoding="async" alt="Overview of CEPO: prompt decomposition into a coordinator prompt shared across all agents and executor prompts local to each agent; inference prepends the coordinator to every executor; optimization runs in two phases, coordinator first with meta-instruction Phi_C, then executors with Phi_E, using any black-box optimizer.">
+        </a>
+        <figcaption>
+          <b>Overview of CEPO.</b> Prompts in a multi-agent system are decomposed into two layers with distinct roles. The coordinator prompt <code class="inl">p<sub>C</sub></code> (shared across all agents) captures coordination signals: team composition, role assignment, shared norms for reasoning. Each executor prompt <code class="inl">p<sub>E</sub><sup>(i)</sup></code> (local to agent <i>A<sub>i</sub></i>) captures execution signals: evidence anchoring, task scoping, procedure execution. At inference, agent <i>A<sub>i</sub></i> receives <code class="inl">p<sub>C</sub> &oplus; p<sub>E</sub><sup>(i)</sup></code>. The two layers are optimized sequentially with role-aligned guidance by an existing optimizer <i>O</i> (PE2, OPRO, ProTeGi, MASPO) plugged in without modification.
+        </figcaption>
+      </figure>
+
+      <div class="pipeline mt40">
+        <div class="pstep co">
+          <div class="num">1</div>
+          <h4>Decompose</h4>
+          <p>Initialize executor prompts from the system&rsquo;s default prompts; let an LLM draft an initial coordinator prompt from a description of the system and its agent roles.</p>
+        </div>
+        <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+        <div class="pstep co">
+          <div class="num">2</div>
+          <h4>Phase 1 &middot; Coordinator</h4>
+          <p>With executors frozen, the optimizer updates <code class="inl">p<sub>C</sub></code> for <i>T<sub>C</sub></i> iterations under <code class="inl">&Phi;<sub>C</sub></code>; the best iterate by system-level validation score is kept.</p>
+        </div>
+        <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+        <div class="pstep ex">
+          <div class="num">3</div>
+          <h4>Phase 2 &middot; Executors</h4>
+          <p>With <code class="inl">p<sub>C</sub><sup>&#9733;</sup></code> frozen, selected executor prompts are updated for <i>T<sub>E</sub></i> iterations under <code class="inl">&Phi;<sub>E</sub></code>, each selected by validation.</p>
+        </div>
+        <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+        <div class="pstep gd">
+          <div class="num">4</div>
+          <h4>Any optimizer</h4>
+          <p>Candidate generation and search follow the underlying optimizer. CEPO changes only what is optimized and the guidance for optimizing it.</p>
+        </div>
+      </div>
+
+      <div class="narrow mt40">
+        <p>
+          <b>Principle 1: coordinator-executor prompt decomposition.</b> System-level coordination is represented by a dedicated,
+          shared prompt parameter. The coordinator specifies how agents share findings, flag disagreements and support
+          subsequent stages; each executor specifies how its agent carries out its assigned task. Updating
+          <code class="inl">p<sub>C</sub></code> changes the shared instructions received by all agents, whereas updating
+          <code class="inl">p<sub>E</sub><sup>(i)</sup></code> changes only agent <i>A<sub>i</sub></i>&rsquo;s local instructions.
+        </p>
+        <p style="margin-top:18px;">
+          <b>Principle 2: role-aligned optimization.</b> Role-specific meta-instructions are supplied to the underlying
+          optimizer. <code class="inl">&Phi;<sub>C</sub></code> directs it to refine system-level collaboration
+          (cross-agent communication, handling of conflicting evidence, shared reasoning norms);
+          <code class="inl">&Phi;<sub>E</sub></code> directs it to refine the target agent&rsquo;s execution (task scoping,
+          evidence use, concrete procedures). Both layers are still selected by the same system-level objective; swapping
+          the guidance between layers is the <i>worst</i> assignment (Table 6).
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== RESULTS ======== -->
+  <section class="alt" id="results">
+    <div class="wrap">
+      <span class="eyebrow">Experiments</span>
+      <h2 class="section-title">Any domain, any MAS, any optimizer</h2>
+      <p class="section-sub">Tables from the paper. Green subscripts are gains over the unoptimized system; CEPO rows are highlighted. Every optimizer &times; system &times; benchmark setting improves.</p>
+
+      <figure class="fig fig-wide">
+        <a class="zoom" href="static/figures/tab2_document.png" target="_blank" rel="noopener"><img src="static/figures/tab2_document.png" loading="lazy" decoding="async" alt="Table 2: document understanding results on MMLongBench-Doc, LongDocURL, PaperTab, PaperText and FetaTab. MDocAgent + CEPO and DocAgent + CEPO improve on every benchmark, with average gains of 4.3 and 2.7 points."></a>
+        <figcaption><b>Document understanding.</b> PE2 + CEPO on two multi-agent systems, MDocAgent (Qwen-3.5 4B) and DocAgent (GPT-5-mini), against proprietary models, single-agent and multi-agent baselines. Both systems improve on every benchmark: +4.3 and +2.7 on average, up to +7.9 on MMLongBench-Doc. &dagger; in the table marks results on the paper&rsquo;s custom 10/10/80 train/val/test split; other rows are on the original test sets.</figcaption>
+      </figure>
+
+      <figure class="fig fig-wide mt40">
+        <a class="zoom" href="static/figures/tab8_optimizers.png" target="_blank" rel="noopener"><img src="static/figures/tab8_optimizers.png" loading="lazy" decoding="async" alt="Table 8: PE2, ProTeGi and OPRO on MDocAgent with and without CEPO across five document benchmarks; CEPO improves every optimizer-benchmark combination."></a>
+        <figcaption><b>Different prompt optimizers.</b> PE2, ProTeGi and OPRO on MDocAgent, each kept with its default hyperparameters; rows are cumulative within each block. CEPO improves every optimizer&ndash;benchmark combination, by 0.6 to 6.5 points over the corresponding vanilla optimizer.</figcaption>
+      </figure>
+
+      <div class="two mt40">
+        <figure class="fig">
+          <a class="zoom" href="static/figures/tab3_mathcode.png" target="_blank" rel="noopener"><img src="static/figures/tab3_mathcode.png" loading="lazy" decoding="async" alt="Table 3: MASPO with and without CEPO on AQuA, MATH-500, AGIEval-MATH, HumanEval-ET and MBPP; CEPO improves all five, +5.07 average over the baseline."></a>
+          <figcaption><b>Math &amp; code with a MAS-specific optimizer.</b> On MASPO&rsquo;s Qwen3-8B multi-agent system, CEPO on top of MASPO improves all five benchmarks: +5.07 average over the baseline, +1.04 over MASPO alone.</figcaption>
+        </figure>
+        <figure class="fig">
+          <a class="zoom" href="static/figures/tab7_video.png" target="_blank" rel="noopener"><img src="static/figures/tab7_video.png" loading="lazy" decoding="async" alt="Table 7: LongVideoAgent on LongTVQA+: 60.3 baseline, 63.4 with PE2, 64.9 with PE2 + CEPO."></a>
+          <figcaption><b>Long-video understanding.</b> LongVideoAgent (Qwen2.5-7B master agent, GPT-5-mini grounding and vision agents) on LongTVQA+: CEPO adds 1.5 points over vanilla PE2 and 4.6 over the baseline.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== ANALYSIS ======== -->
+  <section id="analysis">
+    <div class="wrap">
+      <span class="eyebrow">Analysis</span>
+      <h2 class="section-title">Why it works</h2>
+      <p class="section-sub">MDocAgent on MMLongBench-Doc with PE2. Both principles matter, the gains grow with the team, and CEPO reaches a higher score with fewer optimizer and MAS calls.</p>
+
+      <div class="small-tables">
+        <figure class="fig">
+          <a class="zoom" href="static/figures/tab4_ablation.png" target="_blank" rel="noopener"><img src="static/figures/tab4_ablation.png" loading="lazy" decoding="async" alt="Table 4: component ablation. Baseline 54.1, vanilla PE2 57.9, LLM-generated coordinator 55.6, optimized coordinator 58.6, role-aligned optimization 61.0."></a>
+          <figcaption><b>Component ablation.</b> Decomposition alone helps (58.6); role-aligned optimization of both layers reaches 61.0.</figcaption>
+        </figure>
+        <figure class="fig">
+          <a class="zoom" href="static/figures/tab5_budget.png" target="_blank" rel="noopener"><img src="static/figures/tab5_budget.png" loading="lazy" decoding="async" alt="Table 5: accuracy by training budget. PE2 with 3 executor iterations reaches 57.9 using 5,714 MAS calls; CEPO with one iteration per layer reaches 60.1 using 3,120 calls."></a>
+          <figcaption><b>Budget efficiency.</b> One iteration per layer (60.1) beats vanilla PE2 with three (57.9) at roughly half the MAS calls.</figcaption>
+        </figure>
+        <figure class="fig">
+          <a class="zoom" href="static/figures/tab6_swap.png" target="_blank" rel="noopener"><img src="static/figures/tab6_swap.png" loading="lazy" decoding="async" alt="Table 6: optimization-guidance swap. Coordination guidance for the coordinator and execution guidance for the executor gives 61.0; reversing them gives 57.7."></a>
+          <figcaption><b>Guidance swap.</b> Role-aligned guidance is best (61.0); reversing it is worst (57.7).</figcaption>
+        </figure>
+      </div>
+
+      <div class="two mt40">
+        <figure class="fig">
+          <a class="zoom" href="static/figures/fig3_scaling.png" target="_blank" rel="noopener">
+            <img src="static/figures/fig3_scaling.png" loading="lazy" decoding="async" alt="Accuracy versus number of agents (1 to 5): the unoptimized system stays near 54, vanilla PE2 is non-monotonic and dips at three agents, PE2 + CEPO rises monotonically to 61.0 at five agents with gains of +3.9, +4.1, +4.5 and +6.9 over the baseline.">
+          </a>
+          <figcaption><b>Gains grow with the team.</b> On MDocAgent configurations with one to five agents, the unoptimized system gains little as agents are added and vanilla PE2 is non-monotonic (falling below the unoptimized result at three agents), while PE2 + CEPO increases monotonically to 61.0; its advantage over the unoptimized system grows from +3.9 at two agents to +6.9 at five.</figcaption>
+        </figure>
+        <figure class="fig">
+          <a class="zoom" href="static/figures/fig4_qualitative.png" target="_blank" rel="noopener">
+            <img src="static/figures/fig4_qualitative.png" loading="lazy" decoding="async" alt="Optimized prompts: the coordinator evolves from a generic system description into team-level orchestration rules; the General agent's executor evolves from vague instructions into a concrete agent-level execution procedure.">
+          </a>
+          <figcaption><b>Complementary roles.</b> Through optimization, the coordinator prompt evolves from a generic description into team-level orchestration rules (flag unsupported claims, identify unresolved issues, support final synthesis), while the General agent&rsquo;s executor prompt evolves from vague instructions into a concrete execution procedure (combine OCR and image evidence, ground answers locally, extract table rows). The coordinator learns <i>what the team should do</i>; the executor learns <i>how to do it</i>.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== BIBTEX ======== -->
+  <section id="bibtex">
+    <div class="wrap narrow">
+      <span class="eyebrow">Cite</span>
+      <h2 class="section-title">BibTeX</h2>
+      <div class="bibwrap">
+        <button class="copy-btn" onclick="copyBib()"><i class="far fa-copy"></i> Copy</button>
+        <pre class="bibtex" id="bib"><span class="k">@article</span>{kim2026cepo,
+  <span class="k">title</span>   = {<span class="v">CEPO: A General Framework for Improving Prompt Optimization
+             in Multi-Agent Systems</span>},
+  <span class="k">author</span>  = {<span class="v">Kim, Jongha and Lee, Seohyun and Chung, Jonathan Minho and
+             Yoon, Jinsung and Kim, Hyunwoo J.</span>},
+  <span class="k">journal</span> = {<span class="v">arXiv preprint arXiv:2610.34722</span>},
+  <span class="k">year</span>    = {<span class="v">2026</span>}
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <p class="foot-note">Korea University &middot; KAIST <a href="https://mlv.kaist.ac.kr/" target="_blank" rel="noopener">Machine Learning &amp; Vision Lab</a> &middot; in collaboration with Google Cloud AI<br>Page source: <a href="https://github.com/mlvlab/CEPO/tree/project_page" target="_blank" rel="noopener">github.com/mlvlab/CEPO</a> (branch <code class="inl">project_page</code>)</p>
+    </div>
+  </footer>
+
+  <script>
+    function copyBib(){
+      const t=document.getElementById('bib').innerText;
+      navigator.clipboard.writeText(t).then(()=>{
+        const b=document.querySelector('.copy-btn');
+        const o=b.innerHTML;b.innerHTML='<i class="fas fa-check"></i> Copied';
+        setTimeout(()=>b.innerHTML=o,1600);
+      });
+    }
+    (function(){
+      var btn=document.getElementById('theme-toggle');
+      if(btn){btn.setAttribute('aria-pressed',String(document.documentElement.classList.contains('dark')));btn.addEventListener('click',function(){
+        var dark=document.documentElement.classList.toggle('dark');
+        try{localStorage.setItem('theme',dark?'dark':'light');}catch(e){}
+        btn.setAttribute('aria-pressed',String(dark));
+      });}
+    })();
+  </script>
+</body>
+</html>
